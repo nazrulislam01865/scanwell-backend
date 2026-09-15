@@ -1,0 +1,167 @@
+scanwell-backend/
+│
+├── app/
+│   ├── main.py
+│   ├── bootstrap.py
+│   │
+│   ├── api/
+│   │   ├── dependencies.py
+│   │   ├── router.py
+│   │   │
+│   │   └── v1/
+│   │       ├── __init__.py
+│   │       └── router.py
+│   │
+│   ├── core/
+│   │   ├── config/
+│   │   │   ├── settings.py
+│   │   │   └── environment.py
+│   │   │
+│   │   ├── database/
+│   │   │   ├── base.py
+│   │   │   ├── session.py
+│   │   │   └── transaction.py
+│   │   │
+│   │   ├── security/
+│   │   │   ├── passwords.py
+│   │   │   ├── jwt.py
+│   │   │   ├── permissions.py
+│   │   │   └── rate_limit.py
+│   │   │
+│   │   ├── exceptions/
+│   │   │   ├── base.py
+│   │   │   ├── handlers.py
+│   │   │   └── codes.py
+│   │   │
+│   │   ├── logging/
+│   │   │   ├── config.py
+│   │   │   └── filters.py
+│   │   │
+│   │   ├── middleware/
+│   │   │   ├── request_id.py
+│   │   │   ├── logging.py
+│   │   │   └── timing.py
+│   │   │
+│   │   └── observability/
+│   │       ├── metrics.py
+│   │       └── tracing.py
+│   │
+│   ├── shared/
+│   │   ├── domain/
+│   │   │   ├── entity.py
+│   │   │   ├── value_object.py
+│   │   │   └── events.py
+│   │   │
+│   │   ├── application/
+│   │   │   ├── pagination.py
+│   │   │   └── result.py
+│   │   │
+│   │   └── infrastructure/
+│   │       ├── storage/
+│   │       ├── email/
+│   │       └── cache/
+│   │
+│   └── modules/
+│       │
+│       ├── auth/
+│       │   ├── domain/
+│       │   │   ├── entities.py
+│       │   │   ├── value_objects.py
+│       │   │   ├── repositories.py
+│       │   │   └── exceptions.py
+│       │   │
+│       │   ├── application/
+│       │   │   ├── dto.py
+│       │   │   ├── commands.py
+│       │   │   ├── queries.py
+│       │   │   └── use_cases/
+│       │   │       ├── register_user.py
+│       │   │       ├── login_user.py
+│       │   │       ├── refresh_token.py
+│       │   │       ├── verify_email.py
+│       │   │       └── reset_password.py
+│       │   │
+│       │   ├── infrastructure/
+│       │   │   ├── models.py
+│       │   │   ├── repository.py
+│       │   │   ├── token_service.py
+│       │   │   └── email_service.py
+│       │   │
+│       │   └── presentation/
+│       │       ├── router.py
+│       │       ├── schemas.py
+│       │       └── dependencies.py
+│       │
+│       ├── users/
+│       │   ├── domain/
+│       │   ├── application/
+│       │   ├── infrastructure/
+│       │   └── presentation/
+│       │
+│       ├── health_profiles/
+│       │   ├── domain/
+│       │   ├── application/
+│       │   ├── infrastructure/
+│       │   └── presentation/
+│       │
+│       ├── products/
+│       │   ├── domain/
+│       │   ├── application/
+│       │   ├── infrastructure/
+│       │   └── presentation/
+│       │
+│       ├── nutrition/
+│       ├── ingredients/
+│       ├── health_flags/
+│       ├── scans/
+│       ├── ocr/
+│       ├── saved_products/
+│       ├── corrections/
+│       ├── media/
+│       ├── notifications/
+│       ├── audit/
+│       └── system/
+│
+├── alembic/
+│   ├── versions/
+│   └── env.py
+│
+├── workers/
+│   ├── main.py
+│   ├── tasks/
+│   │   ├── process_scan.py
+│   │   ├── run_ocr.py
+│   │   └── analyze_product.py
+│   └── consumers/
+│
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   ├── api/
+│   ├── repositories/
+│   ├── factories/
+│   └── conftest.py
+│
+├── scripts/
+│   ├── create_superuser.py
+│   ├── seed_development.py
+│   └── wait_for_database.py
+│
+├── docs/
+│   ├── architecture/
+│   ├── api/
+│   └── adr/
+│
+├── deploy/
+│   ├── docker/
+│   └── nginx/
+│
+├── .env
+├── .env.example
+├── .gitignore
+├── Dockerfile
+├── docker-compose.yml
+├── pyproject.toml
+├── uv.lock
+├── Makefile
+└── README.md

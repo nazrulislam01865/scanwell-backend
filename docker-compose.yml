@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: scanwell_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-scanwell}
+      POSTGRES_USER: ${POSTGRES_USER:-scanwell}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Shuvessa}
+    ports:
+      - "5432:5432"
+    volumes:
+      - scanwell_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-scanwell} -d ${POSTGRES_DB:-scanwell}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  scanwell_postgres_data:
