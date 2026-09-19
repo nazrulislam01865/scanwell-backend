@@ -4,9 +4,13 @@ from uuid import UUID
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.auth.domain.entities import AuthUser, VerificationCode
+from app.modules.auth.domain.entities import AuthSession, AuthUser, VerificationCode
 from app.modules.auth.domain.value_objects import LoginMethod, VerificationPurpose
-from app.modules.auth.infrastructure.models import AuthUserModel, VerificationCodeModel
+from app.modules.auth.infrastructure.models import (
+    AuthSessionModel,
+    AuthUserModel,
+    VerificationCodeModel,
+)
 
 
 def user_model_to_entity(model: AuthUserModel) -> AuthUser:
@@ -34,6 +38,19 @@ def verification_model_to_entity(model: VerificationCodeModel) -> VerificationCo
         consumed_at=model.consumed_at,
         failed_attempts=model.failed_attempts,
         created_at=model.created_at,
+    )
+
+
+def auth_session_model_to_entity(model: AuthSessionModel) -> AuthSession:
+    return AuthSession(
+        id=model.id,
+        user_id=model.user_id,
+        refresh_token_hash=model.refresh_token_hash,
+        expires_at=model.expires_at,
+        created_at=model.created_at,
+        last_used_at=model.last_used_at,
+        revoked_at=model.revoked_at,
+        revoked_reason=model.revoked_reason,
     )
 
 
@@ -145,4 +162,59 @@ class SQLAlchemyVerificationCodeRepository:
                 VerificationCodeModel.consumed_at.is_(None),
             )
             .values(consumed_at=consumed_at)
+        )
+
+
+class SQLAlchemyAuthSessionRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def add(self, auth_session: AuthSession) -> None:
+        self._session.add(
+            AuthSessionModel(
+                id=auth_session.id,
+                user_id=auth_session.user_id,
+                refresh_token_hash=auth_session.refresh_token_hash,
+                expires_at=auth_session.expires_at,
+                created_at=auth_session.created_at,
+                last_used_at=auth_session.last_used_at,
+                revoked_at=auth_session.revoked_at,
+                revoked_reason=auth_session.revoked_reason,
+            )
+        )
+
+    async def save(self, auth_session: AuthSession) -> None:
+        await self._session.execute(
+            update(AuthSessionModel)
+            .where(AuthSessionModel.id == auth_session.id)
+            .values(
+                refresh_token_hash=auth_session.refresh_token_hash,
+                expires_at=auth_session.expires_at,
+                last_used_at=auth_session.last_used_at,
+                revoked_at=auth_session.revoked_at,
+                revoked_reason=auth_session.revoked_reason,
+            )
+        )
+
+    async def get_by_id(self, session_id: UUID) -> AuthSession | None:
+        model = await self._session.get(AuthSessionModel, session_id)
+        return auth_session_model_to_entity(model) if model is not None else None
+
+    async def revoke_all_for_user(
+        self,
+        user_id: UUID,
+        *,
+        revoked_at: datetime,
+        reason: str,
+    ) -> None:
+        await self._session.execute(
+            update(AuthSessionModel)
+            .where(
+                AuthSessionModel.user_id == user_id,
+                AuthSessionModel.revoked_at.is_(None),
+            )
+            .values(
+                revoked_at=revoked_at,
+                revoked_reason=reason,
+            )
         )

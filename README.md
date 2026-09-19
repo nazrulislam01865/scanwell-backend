@@ -1,6 +1,6 @@
 # ScanWell FastAPI Backend
 
-FastAPI backend for the ScanWell Flutter application. The current backend phase includes account registration, email verification, password login, email OTP login, JWT access/refresh tokens, and the authenticated current-user endpoint.
+FastAPI backend for the ScanWell Flutter application. The current backend phase includes account registration, email verification, password login, email OTP login, forgot/reset password, JWT access tokens, persisted rotating refresh sessions, logout, logout-all, and the authenticated current-user endpoint.
 
 ## 1. Requirements
 
@@ -137,6 +137,52 @@ The response is intentionally generic so unknown email addresses cannot be enume
 }
 ```
 
+Refresh tokens are persisted as SHA-256 hashes in `auth_sessions`. Each successful refresh rotates the token; the previous refresh token immediately becomes unusable.
+
+### Logout current session
+
+`POST /api/v1/auth/logout`
+
+```json
+{
+  "refresh_token": "<refresh-token>"
+}
+```
+
+### Logout all sessions
+
+`POST /api/v1/auth/logout-all`
+
+Header:
+
+```text
+Authorization: Bearer <access-token>
+```
+
+### Forgot password
+
+`POST /api/v1/auth/password/forgot`
+
+```json
+{
+  "email": "nazrul@example.com"
+}
+```
+
+### Reset password
+
+`POST /api/v1/auth/password/reset`
+
+```json
+{
+  "email": "nazrul@example.com",
+  "code": "123456",
+  "new_password": "new-secret123"
+}
+```
+
+A successful password reset revokes all active refresh sessions for the account.
+
 ### Current authenticated user
 
 `GET /api/v1/auth/me`
@@ -160,7 +206,7 @@ Application authentication errors use this shape:
 }
 ```
 
-Common codes include `EMAIL_ALREADY_REGISTERED`, `INVALID_CREDENTIALS`, `EMAIL_NOT_VERIFIED`, `ACCOUNT_DISABLED`, `INVALID_VERIFICATION_CODE`, `VERIFICATION_CODE_EXPIRED`, `VERIFICATION_ATTEMPTS_EXCEEDED`, and `INVALID_AUTH_TOKEN`.
+Common codes include `EMAIL_ALREADY_REGISTERED`, `INVALID_CREDENTIALS`, `EMAIL_NOT_VERIFIED`, `ACCOUNT_DISABLED`, `INVALID_VERIFICATION_CODE`, `VERIFICATION_CODE_EXPIRED`, `VERIFICATION_ATTEMPTS_EXCEEDED`, `INVALID_AUTH_TOKEN`, and `AUTH_SESSION_REVOKED`.
 
 ## 5. Email delivery
 
@@ -198,9 +244,9 @@ uv run ruff check .
 
 ## 7. Auth persistence
 
-The migration `20260915_0001_create_auth_tables.py` creates:
+Authentication persistence is created by:
 
-- `auth_users`
-- `auth_verification_codes`
+- `20260915_0001_create_auth_tables.py` -> `auth_users`, `auth_verification_codes`
+- `20260919_0002_create_auth_sessions.py` -> `auth_sessions`
 
-Passwords are Argon2 hashes. Six-digit verification codes are never stored in plaintext; only an HMAC-SHA256 digest is persisted.
+Passwords are Argon2 hashes. Six-digit verification codes are never stored in plaintext; only an HMAC-SHA256 digest is persisted. Refresh tokens are also never stored in plaintext; `auth_sessions` stores only a SHA-256 digest of the current rotating refresh token.

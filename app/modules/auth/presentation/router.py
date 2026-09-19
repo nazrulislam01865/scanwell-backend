@@ -4,31 +4,43 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 
 from app.modules.auth.application.commands import (
+    ForgotPasswordCommand,
     LoginUserCommand,
+    LogoutAllCommand,
+    LogoutUserCommand,
     RefreshTokenCommand,
     RegisterUserCommand,
     RequestLoginOtpCommand,
     ResendVerificationCommand,
+    ResetPasswordCommand,
     VerifyEmailCommand,
     VerifyLoginOtpCommand,
 )
 from app.modules.auth.application.queries import CurrentUserQuery
+from app.modules.auth.application.use_cases.forgot_password import ForgotPassword
 from app.modules.auth.application.use_cases.get_current_user import GetCurrentUser
 from app.modules.auth.application.use_cases.login_user import LoginUser
+from app.modules.auth.application.use_cases.logout_all import LogoutAll
+from app.modules.auth.application.use_cases.logout_user import LogoutUser
 from app.modules.auth.application.use_cases.refresh_token import RefreshToken
 from app.modules.auth.application.use_cases.register_user import RegisterUser
 from app.modules.auth.application.use_cases.request_login_otp import RequestLoginOtp
 from app.modules.auth.application.use_cases.resend_verification import ResendVerification
+from app.modules.auth.application.use_cases.reset_password import ResetPassword
 from app.modules.auth.application.use_cases.verify_email import VerifyEmail
 from app.modules.auth.application.use_cases.verify_login_otp import VerifyLoginOtp
 from app.modules.auth.presentation.dependencies import (
     get_current_user_id,
+    get_forgot_password_use_case,
     get_get_current_user_use_case,
     get_login_user_use_case,
+    get_logout_all_use_case,
+    get_logout_user_use_case,
     get_refresh_token_use_case,
     get_register_user_use_case,
     get_request_login_otp_use_case,
     get_resend_verification_use_case,
+    get_reset_password_use_case,
     get_verify_email_use_case,
     get_verify_login_otp_use_case,
 )
@@ -37,9 +49,11 @@ from app.modules.auth.presentation.schemas import (
     CodeDispatchResponse,
     EmailRequest,
     LoginRequest,
+    MessageResponse,
     RefreshRequest,
     RegisterRequest,
     RegisterResponse,
+    ResetPasswordRequest,
     TokenResponse,
     UserResponse,
     VerifyCodeRequest,
@@ -133,6 +147,24 @@ async def refresh(
     return TokenResponse.from_tokens(tokens)
 
 
+@router.post("/logout", response_model=MessageResponse)
+async def logout(
+    payload: RefreshRequest,
+    use_case: Annotated[LogoutUser, Depends(get_logout_user_use_case)],
+) -> MessageResponse:
+    await use_case.execute(LogoutUserCommand(refresh_token=payload.refresh_token))
+    return MessageResponse(message="Logged out successfully.")
+
+
+@router.post("/logout-all", response_model=MessageResponse)
+async def logout_all(
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    use_case: Annotated[LogoutAll, Depends(get_logout_all_use_case)],
+) -> MessageResponse:
+    await use_case.execute(LogoutAllCommand(user_id=user_id))
+    return MessageResponse(message="Logged out from all devices successfully.")
+
+
 @router.get("/me", response_model=UserResponse)
 async def me(
     user_id: Annotated[UUID, Depends(get_current_user_id)],
@@ -140,3 +172,31 @@ async def me(
 ) -> UserResponse:
     user = await use_case.execute(CurrentUserQuery(user_id=user_id))
     return UserResponse.from_dto(user)
+
+
+@router.post(
+    "/password/forgot",
+    response_model=CodeDispatchResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def forgot_password(
+    payload: EmailRequest,
+    use_case: Annotated[ForgotPassword, Depends(get_forgot_password_use_case)],
+) -> CodeDispatchResponse:
+    result = await use_case.execute(ForgotPasswordCommand(email=str(payload.email)))
+    return CodeDispatchResponse.from_result(result)
+
+
+@router.post("/password/reset", response_model=MessageResponse)
+async def reset_password(
+    payload: ResetPasswordRequest,
+    use_case: Annotated[ResetPassword, Depends(get_reset_password_use_case)],
+) -> MessageResponse:
+    await use_case.execute(
+        ResetPasswordCommand(
+            email=str(payload.email),
+            code=payload.code,
+            new_password=payload.new_password,
+        )
+    )
+    return MessageResponse(message="Password reset successfully. You can now sign in.")

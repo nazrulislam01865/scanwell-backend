@@ -2,8 +2,12 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from app.modules.auth.domain.entities import AuthUser, VerificationCode
-from app.modules.auth.domain.value_objects import AuthTokens, VerificationPurpose
+from app.modules.auth.domain.entities import AuthSession, AuthUser, VerificationCode
+from app.modules.auth.domain.value_objects import (
+    AuthTokens,
+    RefreshTokenIdentity,
+    VerificationPurpose,
+)
 
 
 class UserRepository(Protocol):
@@ -35,6 +39,22 @@ class VerificationCodeRepository(Protocol):
     ) -> None: ...
 
 
+class AuthSessionRepository(Protocol):
+    async def add(self, session: AuthSession) -> None: ...
+
+    async def save(self, session: AuthSession) -> None: ...
+
+    async def get_by_id(self, session_id: UUID) -> AuthSession | None: ...
+
+    async def revoke_all_for_user(
+        self,
+        user_id: UUID,
+        *,
+        revoked_at: datetime,
+        reason: str,
+    ) -> None: ...
+
+
 class EmailService(Protocol):
     async def send_verification_code(
         self,
@@ -46,8 +66,12 @@ class EmailService(Protocol):
 
 
 class TokenService(Protocol):
-    def issue_pair(self, *, user_id: UUID) -> AuthTokens: ...
+    def issue_pair(self, *, user_id: UUID, session_id: UUID) -> AuthTokens: ...
 
     def subject_from_access(self, token: str) -> UUID: ...
 
-    def subject_from_refresh(self, token: str) -> UUID: ...
+    def refresh_identity(self, token: str) -> RefreshTokenIdentity: ...
+
+    def hash_refresh_token(self, token: str) -> str: ...
+
+    def refresh_token_matches(self, token: str, expected_hash: str) -> bool: ...

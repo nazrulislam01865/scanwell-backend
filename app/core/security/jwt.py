@@ -20,6 +20,7 @@ class TokenClaims:
     jti: str
     issued_at: datetime
     expires_at: datetime
+    session_id: UUID | None = None
 
 
 class JWTService:
@@ -40,11 +41,19 @@ class JWTService:
         self._access_token_ttl = access_token_ttl
         self._refresh_token_ttl = refresh_token_ttl
 
-    def create_access_token(self, *, user_id: UUID) -> str:
-        return self._create_token(user_id=user_id, token_type="access")
+    def create_access_token(self, *, user_id: UUID, session_id: UUID | None = None) -> str:
+        return self._create_token(
+            user_id=user_id,
+            token_type="access",
+            session_id=session_id,
+        )
 
-    def create_refresh_token(self, *, user_id: UUID) -> str:
-        return self._create_token(user_id=user_id, token_type="refresh")
+    def create_refresh_token(self, *, user_id: UUID, session_id: UUID | None = None) -> str:
+        return self._create_token(
+            user_id=user_id,
+            token_type="refresh",
+            session_id=session_id,
+        )
 
     def decode(self, token: str, *, expected_type: TokenType) -> TokenClaims:
         try:
@@ -59,19 +68,30 @@ class JWTService:
             token_type = payload["type"]
             if token_type != expected_type:
                 raise InvalidTokenError("Unexpected token type")
+
+            raw_session_id = payload.get("sid")
+            session_id = UUID(raw_session_id) if raw_session_id is not None else None
+
             return TokenClaims(
                 subject=UUID(payload["sub"]),
                 token_type=token_type,
                 jti=str(payload["jti"]),
                 issued_at=datetime.fromtimestamp(payload["iat"], tz=UTC),
                 expires_at=datetime.fromtimestamp(payload["exp"], tz=UTC),
+                session_id=session_id,
             )
         except (PyJWTInvalidTokenError, KeyError, TypeError, ValueError) as exc:
             if isinstance(exc, InvalidTokenError):
                 raise
             raise InvalidTokenError("Invalid or expired token") from exc
 
-    def _create_token(self, *, user_id: UUID, token_type: TokenType) -> str:
+    def _create_token(
+        self,
+        *,
+        user_id: UUID,
+        token_type: TokenType,
+        session_id: UUID | None,
+    ) -> str:
         now = datetime.now(UTC)
         ttl = self._access_token_ttl if token_type == "access" else self._refresh_token_ttl
         payload = {
@@ -83,4 +103,6 @@ class JWTService:
             "iss": self._issuer,
             "aud": self._audience,
         }
+        if session_id is not None:
+            payload["sid"] = str(session_id)
         return jwt.encode(payload, self._secret_key, algorithm=self._algorithm)

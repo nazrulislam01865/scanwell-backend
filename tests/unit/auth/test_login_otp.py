@@ -6,6 +6,7 @@ import pytest
 from app.core.security.passwords import hash_password
 from app.modules.auth.application.code_service import VerificationCodeService
 from app.modules.auth.application.commands import RequestLoginOtpCommand, VerifyLoginOtpCommand
+from app.modules.auth.application.session_service import AuthSessionService
 from app.modules.auth.application.use_cases.request_login_otp import RequestLoginOtp
 from app.modules.auth.application.use_cases.verify_login_otp import VerifyLoginOtp
 from app.modules.auth.domain.entities import AuthUser
@@ -14,13 +15,14 @@ from tests.unit.auth.fakes import (
     FakeEmailService,
     FakeTokenService,
     FakeTransaction,
+    InMemoryAuthSessionRepository,
     InMemoryUserRepository,
     InMemoryVerificationCodeRepository,
 )
 
 
 @pytest.mark.asyncio
-async def test_request_and_verify_login_otp_returns_tokens() -> None:
+async def test_request_and_verify_login_otp_returns_tokens_and_creates_session() -> None:
     now = datetime.now(UTC)
     users = InMemoryUserRepository()
     codes = InMemoryVerificationCodeRepository()
@@ -55,12 +57,16 @@ async def test_request_and_verify_login_otp_returns_tokens() -> None:
     assert dispatched.development_verification_code is not None
     assert email.sent[0][2] == VerificationPurpose.LOGIN_OTP
 
+    session_repo = InMemoryAuthSessionRepository()
     verify = VerifyLoginOtp(
         users=users,
         codes=codes,
         transaction=tx,
         code_service=code_service,
-        token_service=FakeTokenService(),
+        sessions=AuthSessionService(
+            sessions=session_repo,
+            token_service=FakeTokenService(),
+        ),
         max_attempts=5,
     )
     result = await verify.execute(
@@ -71,7 +77,8 @@ async def test_request_and_verify_login_otp_returns_tokens() -> None:
     )
 
     assert result.user.id == user.id
-    assert result.tokens.access_token == f"access:{user.id}"
+    assert result.tokens.access_token.startswith(f"access:{user.id}:")
+    assert len(session_repo.items) == 1
 
 
 @pytest.mark.asyncio

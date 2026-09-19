@@ -70,3 +70,26 @@ class EmailDeliveryFailedError(AuthError):
     )
 
     status_code = 503
+
+
+class InvalidPasswordResetCodeError(AuthError):
+    code = "INVALID_PASSWORD_RESET_CODE"
+    message = "The password reset code is invalid."
+    status_code = 401
+
+
+class PasswordResetCodeExpiredError(AuthError):
+    code = "PASSWORD_RESET_CODE_EXPIRED"
+    message = "The password reset code has expired. Request a new code."
+    status_code = 401
+
+
+class PasswordResetAttemptsExceededError(AuthError):
+    code = "PASSWORD_RESET_ATTEMPTS_EXCEEDED"
+    message = "Too many invalid reset attempts. Request a new code."
+    status_code = 401
+
+class AuthSessionRevokedError(AuthError):
+    code = "AUTH_SESSION_REVOKED"
+    message = "This authentication session has been revoked. Sign in again."
+    status_code = 401

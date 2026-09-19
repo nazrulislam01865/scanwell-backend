@@ -47,17 +47,9 @@ class AuthEmailService:
             else f"{minutes} minutes"
         )
 
-        if (
-            purpose
-            is VerificationPurpose.EMAIL_VERIFICATION
-        ):
-            subject = (
-                "Verify your ScanWell email"
-            )
-
-            heading = (
-                "Verify your email address"
-            )
+        if purpose is VerificationPurpose.EMAIL_VERIFICATION:
+            subject = "Verify your ScanWell email"
+            heading = "Verify your email address"
 
             introduction = (
                 "Use this verification code "
@@ -65,11 +57,17 @@ class AuthEmailService:
                 "ScanWell account."
             )
 
-        else:
-            subject = (
-                "Your ScanWell login code"
+        elif purpose is VerificationPurpose.PASSWORD_RESET:
+            subject = "Reset your ScanWell password"
+            heading = "Reset your password"
+
+            introduction = (
+                "Use this one-time code to reset "
+                "your ScanWell account password."
             )
 
+        else:
+            subject = "Your ScanWell login code"
             heading = "Sign in to ScanWell"
 
             introduction = (

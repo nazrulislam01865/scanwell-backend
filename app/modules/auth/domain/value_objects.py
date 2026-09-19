@@ -1,5 +1,7 @@
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
+from uuid import UUID
 
 
 class LoginMethod(StrEnum):
@@ -10,6 +12,7 @@ class LoginMethod(StrEnum):
 class VerificationPurpose(StrEnum):
     EMAIL_VERIFICATION = "email_verification"
     LOGIN_OTP = "login_otp"
+    PASSWORD_RESET = "password_reset"
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,6 +21,13 @@ class AuthTokens:
     refresh_token: str
     expires_in: int
     token_type: str = "bearer"
+
+
+@dataclass(frozen=True, slots=True)
+class RefreshTokenIdentity:
+    user_id: UUID
+    session_id: UUID
+    expires_at: datetime
 
 
 def normalize_email(value: str) -> str:

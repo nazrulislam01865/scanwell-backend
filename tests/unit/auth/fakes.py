@@ -1,9 +1,15 @@
-from datetime import UTC, datetime
+import hashlib
+import hmac
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from app.modules.auth.domain.entities import AuthUser, VerificationCode
+from app.modules.auth.domain.entities import AuthSession, AuthUser, VerificationCode
 from app.modules.auth.domain.repositories import EmailService, TokenService
-from app.modules.auth.domain.value_objects import AuthTokens, VerificationPurpose
+from app.modules.auth.domain.value_objects import (
+    AuthTokens,
+    RefreshTokenIdentity,
+    VerificationPurpose,
+)
 
 
 class InMemoryUserRepository:
@@ -65,6 +71,34 @@ class InMemoryVerificationCodeRepository:
                 code.consumed_at = consumed_at
 
 
+class InMemoryAuthSessionRepository:
+    def __init__(self) -> None:
+        self.items: dict[UUID, AuthSession] = {}
+        self.saved_ids: list[UUID] = []
+
+    async def add(self, session: AuthSession) -> None:
+        self.items[session.id] = session
+
+    async def save(self, session: AuthSession) -> None:
+        self.items[session.id] = session
+        self.saved_ids.append(session.id)
+
+    async def get_by_id(self, session_id: UUID) -> AuthSession | None:
+        return self.items.get(session_id)
+
+    async def revoke_all_for_user(
+        self,
+        user_id: UUID,
+        *,
+        revoked_at: datetime,
+        reason: str,
+    ) -> None:
+        for session in self.items.values():
+            if session.user_id == user_id and not session.revoked:
+                session.revoke(when=revoked_at, reason=reason)
+                self.saved_ids.append(session.id)
+
+
 class FakeTransaction:
     def __init__(self) -> None:
         self.commits = 0
@@ -92,24 +126,39 @@ class FakeEmailService(EmailService):
 
 
 class FakeTokenService(TokenService):
-    def issue_pair(self, *, user_id: UUID) -> AuthTokens:
+    def __init__(self) -> None:
+        self._counter = 0
+
+    def issue_pair(self, *, user_id: UUID, session_id: UUID) -> AuthTokens:
+        self._counter += 1
+        suffix = str(self._counter)
         return AuthTokens(
-            access_token=f"access:{user_id}",
-            refresh_token=f"refresh:{user_id}",
+            access_token=f"access:{user_id}:{session_id}:{suffix}",
+            refresh_token=f"refresh:{user_id}:{session_id}:{suffix}",
             expires_in=900,
         )
 
     def subject_from_access(self, token: str) -> UUID:
-        prefix, value = token.split(":", 1)
-        if prefix != "access":
+        parts = token.split(":")
+        if len(parts) < 2 or parts[0] != "access":
             raise ValueError("invalid access token")
-        return UUID(value)
+        return UUID(parts[1])
 
-    def subject_from_refresh(self, token: str) -> UUID:
-        prefix, value = token.split(":", 1)
-        if prefix != "refresh":
+    def refresh_identity(self, token: str) -> RefreshTokenIdentity:
+        parts = token.split(":")
+        if len(parts) != 4 or parts[0] != "refresh":
             raise ValueError("invalid refresh token")
-        return UUID(value)
+        return RefreshTokenIdentity(
+            user_id=UUID(parts[1]),
+            session_id=UUID(parts[2]),
+            expires_at=datetime.now(UTC) + timedelta(days=30),
+        )
+
+    def hash_refresh_token(self, token: str) -> str:
+        return hashlib.sha256(token.encode()).hexdigest()
+
+    def refresh_token_matches(self, token: str, expected_hash: str) -> bool:
+        return hmac.compare_digest(self.hash_refresh_token(token), expected_hash)
 
 
 def utcnow() -> datetime:

@@ -10,6 +10,7 @@ from app.modules.auth.presentation.dependencies import (
     get_current_user_id,
     get_get_current_user_use_case,
     get_login_user_use_case,
+    get_logout_user_use_case,
     get_register_user_use_case,
 )
 
@@ -117,6 +118,22 @@ def test_me_returns_authenticated_user() -> None:
     assert response.json()["email_verified"] is True
 
 
+
+def test_logout_accepts_refresh_token_and_returns_message() -> None:
+    stub = StubUseCase()
+    app.dependency_overrides[get_logout_user_use_case] = lambda: stub
+    try:
+        response = TestClient(app).post(
+            "/api/v1/auth/logout",
+            json={"refresh_token": "refresh-token"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {"message": "Logged out successfully."}
+    assert stub.commands[0].refresh_token == "refresh-token"
+
 def test_openapi_exposes_complete_auth_surface() -> None:
     paths = app.openapi()["paths"]
     expected = {
@@ -127,6 +144,10 @@ def test_openapi_exposes_complete_auth_surface() -> None:
         "/api/v1/auth/login/otp/request": "post",
         "/api/v1/auth/login/otp/verify": "post",
         "/api/v1/auth/refresh": "post",
+        "/api/v1/auth/logout": "post",
+        "/api/v1/auth/logout-all": "post",
+        "/api/v1/auth/password/forgot": "post",
+        "/api/v1/auth/password/reset": "post",
         "/api/v1/auth/me": "get",
     }
     for path, method in expected.items():

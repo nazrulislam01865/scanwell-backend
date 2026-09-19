@@ -1,94 +1,89 @@
 from datetime import UTC, datetime
 
 from app.core.database.transaction import TransactionManager
+from app.core.security.passwords import hash_password
 from app.modules.auth.application.code_service import VerificationCodeService
-from app.modules.auth.application.commands import VerifyEmailCommand
-from app.modules.auth.application.dto import AuthResult, to_user_dto
-from app.modules.auth.application.session_service import AuthSessionService
+from app.modules.auth.application.commands import ResetPasswordCommand
 from app.modules.auth.domain.exceptions import (
-    InvalidVerificationCodeError,
-    VerificationAttemptsExceededError,
-    VerificationCodeExpiredError,
+    InvalidPasswordResetCodeError,
+    PasswordResetAttemptsExceededError,
+    PasswordResetCodeExpiredError,
 )
-from app.modules.auth.domain.repositories import UserRepository, VerificationCodeRepository
+from app.modules.auth.domain.repositories import (
+    AuthSessionRepository,
+    UserRepository,
+    VerificationCodeRepository,
+)
 from app.modules.auth.domain.value_objects import VerificationPurpose, normalize_email
 
 
-class VerifyEmail:
+class ResetPassword:
     def __init__(
         self,
         *,
         users: UserRepository,
         codes: VerificationCodeRepository,
+        sessions: AuthSessionRepository,
         transaction: TransactionManager,
         code_service: VerificationCodeService,
-        sessions: AuthSessionService,
         max_attempts: int,
     ) -> None:
         self._users = users
         self._codes = codes
+        self._sessions = sessions
         self._transaction = transaction
         self._code_service = code_service
-        self._sessions = sessions
         self._max_attempts = max_attempts
 
-    async def execute(self, command: VerifyEmailCommand) -> AuthResult:
+    async def execute(self, command: ResetPasswordCommand) -> None:
         user = await self._users.get_by_email(normalize_email(command.email))
 
-        if user is None:
-            raise InvalidVerificationCodeError
+        if user is None or not user.is_active or not user.email_verified:
+            raise InvalidPasswordResetCodeError
 
-        if user.email_verified:
-            tokens = await self._sessions.issue(user_id=user.id)
-            await self._transaction.commit()
-            return AuthResult(user=to_user_dto(user), tokens=tokens)
-
-        challenge = await self._codes.get_latest_active(
-            user.id,
-            VerificationPurpose.EMAIL_VERIFICATION,
-        )
+        purpose = VerificationPurpose.PASSWORD_RESET
+        challenge = await self._codes.get_latest_active(user.id, purpose)
 
         if challenge is None:
-            raise InvalidVerificationCodeError
-
+            raise InvalidPasswordResetCodeError
         if challenge.failed_attempts >= self._max_attempts:
-            raise VerificationAttemptsExceededError
+            raise PasswordResetAttemptsExceededError
 
         now = datetime.now(UTC)
-
         if challenge.is_expired(now=now):
             challenge.consume(when=now)
             await self._codes.save(challenge)
             await self._transaction.commit()
-            raise VerificationCodeExpiredError
+            raise PasswordResetCodeExpiredError
 
-        valid = self._code_service.matches(
+        if not self._code_service.matches(
             command.code,
             challenge.code_hash,
             challenge_id=challenge.id,
             user_id=challenge.user_id,
             purpose=challenge.purpose,
             created_at=challenge.created_at,
-        )
-
-        if not valid:
+        ):
             challenge.record_failed_attempt()
             await self._codes.save(challenge)
             await self._transaction.commit()
 
             if challenge.failed_attempts >= self._max_attempts:
-                raise VerificationAttemptsExceededError
+                raise PasswordResetAttemptsExceededError
 
-            raise InvalidVerificationCodeError
+            raise InvalidPasswordResetCodeError
 
         challenge.consume(when=now)
-        user.mark_email_verified(when=now)
+        user.change_password_hash(
+            hash_password(command.new_password),
+            when=now,
+        )
+
         await self._codes.save(challenge)
         await self._users.save(user)
-        tokens = await self._sessions.issue(user_id=user.id, now=now)
-        await self._transaction.commit()
-
-        return AuthResult(
-            user=to_user_dto(user),
-            tokens=tokens,
+        await self._sessions.revoke_all_for_user(
+            user.id,
+            revoked_at=now,
+            reason="password_reset",
         )
+        await self._transaction.commit()

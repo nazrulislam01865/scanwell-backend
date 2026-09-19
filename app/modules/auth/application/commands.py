@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from uuid import UUID
 
 from app.modules.auth.domain.value_objects import LoginMethod
 
@@ -43,3 +44,26 @@ class VerifyLoginOtpCommand:
 @dataclass(frozen=True, slots=True)
 class RefreshTokenCommand:
     refresh_token: str
+
+
+@dataclass(frozen=True, slots=True)
+class ForgotPasswordCommand:
+    email: str
+
+
+@dataclass(frozen=True, slots=True)
+class ResetPasswordCommand:
+    email: str
+    code: str
+    new_password: str
+
+
+@dataclass(frozen=True, slots=True)
+class LogoutUserCommand:
+    refresh_token: str
+
+
+@dataclass(frozen=True, slots=True)
+class LogoutAllCommand:
+    user_id: UUID
+
