@@ -17,6 +17,7 @@ class AuthUser:
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    deleted_at: datetime | None = None
 
     @property
     def email_verified(self) -> bool:

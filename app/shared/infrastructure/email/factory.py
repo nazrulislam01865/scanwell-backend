@@ -7,6 +7,10 @@ from app.shared.infrastructure.email.exceptions import (
 from app.shared.infrastructure.email.providers.logging import (
     LoggingEmailSender,
 )
+
+from app.shared.infrastructure.email.providers.resend import (
+    ResendEmailSender,
+)
 from app.shared.infrastructure.email.providers.smtp import (
     SMTPEmailSender,
 )
@@ -26,6 +30,26 @@ def build_email_sender(
             )
 
         return LoggingEmailSender()
+
+
+    #Render
+    if driver == "resend":
+
+        if not settings.resend_api_key:
+            raise EmailConfigurationError(
+                "RESEND_API_KEY is required when "
+                "EMAIL_DRIVER=resend"
+            )
+
+        return ResendEmailSender(
+            api_key=settings.resend_api_key,
+            from_name=settings.email_from_name,
+            from_address=settings.email_from_address,
+            timeout_seconds=settings.resend_timeout_seconds,
+        )
+    #render end
+
+
 
     if driver != "smtp":
         raise EmailConfigurationError(

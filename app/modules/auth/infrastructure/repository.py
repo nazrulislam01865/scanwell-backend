@@ -25,6 +25,7 @@ def user_model_to_entity(model: AuthUserModel) -> AuthUser:
         is_active=model.is_active,
         created_at=model.created_at,
         updated_at=model.updated_at,
+        deleted_at=model.deleted_at,
     )
 
 
@@ -82,6 +83,7 @@ class SQLAlchemyUserRepository:
                 is_active=user.is_active,
                 created_at=user.created_at,
                 updated_at=user.updated_at,
+                deleted_at=user.deleted_at,
             )
         )
 
@@ -98,6 +100,7 @@ class SQLAlchemyUserRepository:
                 email_verified_at=user.email_verified_at,
                 is_active=user.is_active,
                 updated_at=user.updated_at,
+                deleted_at=user.deleted_at,
             )
         )
 

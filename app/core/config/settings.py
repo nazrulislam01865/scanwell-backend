@@ -43,12 +43,20 @@ class Settings(BaseSettings):
     # ------------------------------
 
     email_driver: str = "log"
+    
+    # Resend
+    resend_api_key: str | None = None
+
+    resend_timeout_seconds: int = 15
 
     email_from_name: str = "ScanWell"
 
     email_from_address: str = (
         "no-reply@scanwell.local"
     )
+
+
+
 
     # SMTP
     smtp_host: str | None = None

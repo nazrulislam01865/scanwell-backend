@@ -10,6 +10,7 @@ from app.core.database.base import Base
 # Important:
 # Import auth models so SQLAlchemy registers them in Base.metadata.
 from app.modules.auth.infrastructure import models as auth_models  # noqa: F401
+from app.modules.users.infrastructure import models as user_models  # noqa: F401
 
 
 config = context.config
