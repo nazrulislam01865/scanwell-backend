@@ -219,21 +219,21 @@ AUTH_EXPOSE_DEVELOPMENT_CODES=true
 
 The OTP is logged and can optionally be returned by the API.
 
-For production:
+For production on Render Free, use the Brevo HTTPS API rather than SMTP:
 
 ```env
 APP_ENV=production
-EMAIL_DRIVER=smtp
+EMAIL_DRIVER=brevo
 AUTH_EXPOSE_DEVELOPMENT_CODES=false
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_USERNAME=...
-SMTP_PASSWORD=...
-SMTP_USE_TLS=true
-EMAIL_FROM_ADDRESS=no-reply@example.com
+BREVO_API_KEY=xkeysib-your-api-key
+BREVO_TIMEOUT_SECONDS=15
+EMAIL_FROM_NAME=ScanWell
+EMAIL_FROM_ADDRESS=your-verified-sender@gmail.com
 ```
 
-The application refuses `EMAIL_DRIVER=log` in production.
+`EMAIL_FROM_ADDRESS` must exactly match a sender that has been registered and verified in Brevo. The Brevo provider sends through `POST https://api.brevo.com/v3/smtp/email` over HTTPS and does not require SMTP credentials, a Gmail refresh token, or a custom domain.
+
+The application refuses `EMAIL_DRIVER=log` in production. The existing `smtp`, `gmail_api`, and `resend` drivers remain available for environments where they are appropriate.
 
 ## 6. Tests
 

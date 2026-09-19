@@ -43,19 +43,26 @@ class Settings(BaseSettings):
     # ------------------------------
 
     email_driver: str = "log"
-    
+
+    # Brevo
+    brevo_api_key: str | None = None
+    brevo_timeout_seconds: int = 15
+
     # Resend
     resend_api_key: str | None = None
-
     resend_timeout_seconds: int = 15
+
+    # Gmail API
+    gmail_client_id: str | None = None
+    gmail_client_secret: str | None = None
+    gmail_refresh_token: str | None = None
+    gmail_timeout_seconds: int = 15
 
     email_from_name: str = "ScanWell"
 
     email_from_address: str = (
         "no-reply@scanwell.local"
     )
-
-
 
 
     # SMTP

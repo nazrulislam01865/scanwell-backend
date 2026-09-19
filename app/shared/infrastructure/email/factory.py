@@ -4,10 +4,13 @@ from app.shared.application.email import EmailSender
 from app.shared.infrastructure.email.exceptions import (
     EmailConfigurationError,
 )
+from app.shared.infrastructure.email.providers.brevo import BrevoEmailSender
+from app.shared.infrastructure.email.providers.gmail_api import (
+    GmailApiEmailSender,
+)
 from app.shared.infrastructure.email.providers.logging import (
     LoggingEmailSender,
 )
-
 from app.shared.infrastructure.email.providers.resend import (
     ResendEmailSender,
 )
@@ -22,6 +25,9 @@ def build_email_sender(
 
     driver = settings.email_driver.strip().lower()
 
+    # --------------------------------
+    # Development logging provider
+    # --------------------------------
     if driver == "log":
 
         if settings.app_env is Environment.PRODUCTION:
@@ -31,8 +37,69 @@ def build_email_sender(
 
         return LoggingEmailSender()
 
+    # --------------------------------
+    # Gmail API provider
+    # --------------------------------
+    if driver == "gmail_api":
 
-    #Render
+        if not settings.gmail_client_id:
+            raise EmailConfigurationError(
+                "GMAIL_CLIENT_ID is required when "
+                "EMAIL_DRIVER=gmail_api"
+            )
+
+        if not settings.gmail_client_secret:
+            raise EmailConfigurationError(
+                "GMAIL_CLIENT_SECRET is required when "
+                "EMAIL_DRIVER=gmail_api"
+            )
+
+        if not settings.gmail_refresh_token:
+            raise EmailConfigurationError(
+                "GMAIL_REFRESH_TOKEN is required when "
+                "EMAIL_DRIVER=gmail_api"
+            )
+
+        return GmailApiEmailSender(
+            client_id=settings.gmail_client_id,
+            client_secret=settings.gmail_client_secret,
+            refresh_token=settings.gmail_refresh_token,
+            from_name=settings.email_from_name,
+            from_address=settings.email_from_address,
+            timeout_seconds=settings.gmail_timeout_seconds,
+        )
+
+    # --------------------------------
+    # Brevo HTTP API provider
+    # --------------------------------
+    if driver == "brevo":
+        if not settings.brevo_api_key:
+            raise EmailConfigurationError(
+                "BREVO_API_KEY is required when "
+                "EMAIL_DRIVER=brevo"
+            )
+
+        from_address = settings.email_from_address.strip()
+        if (
+            not from_address
+            or "@" not in from_address
+            or from_address == "no-reply@scanwell.local"
+        ):
+            raise EmailConfigurationError(
+                "EMAIL_FROM_ADDRESS must be a verified Brevo sender "
+                "when EMAIL_DRIVER=brevo"
+            )
+
+        return BrevoEmailSender(
+            api_key=settings.brevo_api_key,
+            from_name=settings.email_from_name,
+            from_address=from_address,
+            timeout_seconds=settings.brevo_timeout_seconds,
+        )
+
+    # --------------------------------
+    # Resend provider
+    # --------------------------------
     if driver == "resend":
 
         if not settings.resend_api_key:
@@ -47,10 +114,10 @@ def build_email_sender(
             from_address=settings.email_from_address,
             timeout_seconds=settings.resend_timeout_seconds,
         )
-    #render end
 
-
-
+    # --------------------------------
+    # SMTP provider
+    # --------------------------------
     if driver != "smtp":
         raise EmailConfigurationError(
             f"Unsupported EMAIL_DRIVER: "

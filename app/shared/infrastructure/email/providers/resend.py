@@ -1,9 +1,13 @@
+import logging
+
 import httpx
 
 from app.shared.application.email import EmailMessage
 from app.shared.infrastructure.email.exceptions import (
     EmailDeliveryError,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ResendEmailSender:
@@ -61,7 +65,22 @@ class ResendEmailSender:
 
             response.raise_for_status()
 
-        except httpx.HTTPError as exc:
+        except httpx.HTTPStatusError as exc:
+            logger.error(
+                "Resend rejected email. status=%s response=%s",
+                exc.response.status_code,
+                exc.response.text,
+            )
+
+            raise EmailDeliveryError(
+                "Email delivery failed"
+            ) from exc
+
+        except httpx.RequestError as exc:
+            logger.exception(
+                "Could not connect to Resend API"
+            )
+
             raise EmailDeliveryError(
                 "Email delivery failed"
             ) from exc
