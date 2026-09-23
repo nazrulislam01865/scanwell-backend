@@ -24,6 +24,13 @@ class AuthTokens:
 
 
 @dataclass(frozen=True, slots=True)
+class AccessTokenIdentity:
+    user_id: UUID
+    session_id: UUID
+    expires_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
 class RefreshTokenIdentity:
     user_id: UUID
     session_id: UUID

@@ -4,6 +4,7 @@ from uuid import UUID
 
 from app.modules.auth.domain.entities import AuthSession, AuthUser, VerificationCode
 from app.modules.auth.domain.value_objects import (
+    AccessTokenIdentity,
     AuthTokens,
     RefreshTokenIdentity,
     VerificationPurpose,
@@ -69,6 +70,8 @@ class TokenService(Protocol):
     def issue_pair(self, *, user_id: UUID, session_id: UUID) -> AuthTokens: ...
 
     def subject_from_access(self, token: str) -> UUID: ...
+
+    def access_identity(self, token: str) -> AccessTokenIdentity: ...
 
     def refresh_identity(self, token: str) -> RefreshTokenIdentity: ...
 
