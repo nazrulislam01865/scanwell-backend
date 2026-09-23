@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     access_token_minutes: int = 15
     refresh_token_days: int = 30
 
+    # Optional bootstrap admin used by scripts/create_superuser.py
+    default_admin_name: str = "ScanWell Admin"
+    default_admin_email: str | None = None
+    default_admin_password: str | None = None
+    default_admin_role: str = "Super Admin"
+
     verification_code_minutes: int = 10
     verification_code_max_attempts: int = 5
 

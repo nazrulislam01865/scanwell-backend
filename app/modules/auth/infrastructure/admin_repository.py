@@ -39,6 +39,21 @@ class SQLAlchemyAdminRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
+    async def add(self, admin: Admin) -> None:
+        self._session.add(
+            AdminModel(
+                id=admin.id,
+                name=admin.name,
+                email=admin.email,
+                password_hash=admin.password_hash,
+                role=admin.role,
+                status=admin.status,
+                last_login_at=admin.last_login_at,
+                created_at=admin.created_at,
+                updated_at=admin.updated_at,
+            )
+        )
+
     async def get_by_email(self, email: str) -> Admin | None:
         result = await self._session.execute(
             select(AdminModel).where(AdminModel.email == email).limit(1)
